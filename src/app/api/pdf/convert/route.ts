@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/auth'
 import { rateLimit, validateFileSize, securityHeaders } from '@/lib/security'
 import { pdfToImages, imageToPDF, excelToPDF } from '@/lib/pdf-operations'
-import { prisma } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
   const rateLimitResponse = rateLimit(request)
   if (rateLimitResponse) return rateLimitResponse
 
   try {
-    const user = await getCurrentUser()
-
     const formData = await request.formData()
     const files = formData.getAll('files') as File[]
     const conversionType = formData.get('type') as string
@@ -41,18 +37,6 @@ export async function POST(request: NextRequest) {
           data: buf.toString('base64'),
         }))
 
-        if (user) {
-          await prisma.conversion.create({
-            data: {
-              userId: user.id,
-              type: 'pdf-to-jpg',
-              inputFileName: files[0].name,
-              outputFileName: outputName,
-              fileSize: files[0].size,
-            }
-          })
-        }
-
         return NextResponse.json({ files: encoded }, { headers: securityHeaders() })
       }
 
@@ -65,18 +49,6 @@ export async function POST(request: NextRequest) {
         result = await imageToPDF(buffers)
         outputName = 'converted.pdf'
         contentType = 'application/pdf'
-
-        if (user) {
-          await prisma.conversion.create({
-            data: {
-              userId: user.id,
-              type: conversionType,
-              inputFileName: files.map(f => f.name).join(', '),
-              outputFileName: outputName,
-              fileSize: (result as Buffer).length,
-            }
-          })
-        }
 
         return new NextResponse(new Uint8Array(result as Buffer), {
           headers: {
@@ -92,18 +64,6 @@ export async function POST(request: NextRequest) {
         result = await excelToPDF(buffer)
         outputName = 'converted.pdf'
         contentType = 'application/pdf'
-
-        if (user) {
-          await prisma.conversion.create({
-            data: {
-              userId: user.id,
-              type: 'excel-to-pdf',
-              inputFileName: files[0].name,
-              outputFileName: outputName,
-              fileSize: (result as Buffer).length,
-            }
-          })
-        }
 
         return new NextResponse(new Uint8Array(result as Buffer), {
           headers: {

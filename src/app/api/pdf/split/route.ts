@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/auth'
 import { rateLimit, validateFileSize, securityHeaders } from '@/lib/security'
 import { splitPDF } from '@/lib/pdf-operations'
-import { prisma } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
   const rateLimitResponse = rateLimit(request)
   if (rateLimitResponse) return rateLimitResponse
 
   try {
-    const user = await getCurrentUser()
-
     const formData = await request.formData()
     const file = formData.get('file') as File
     const rangesStr = formData.get('ranges') as string
@@ -32,18 +28,6 @@ export async function POST(request: NextRequest) {
 
     const buffer = Buffer.from(await file.arrayBuffer())
     const results = await splitPDF(buffer, ranges)
-
-    if (user) {
-      await prisma.conversion.create({
-        data: {
-          userId: user.id,
-          type: 'split',
-          inputFileName: file.name,
-          outputFileName: `split_${ranges.length}_parts.pdf`,
-          fileSize: file.size,
-        }
-      })
-    }
 
     // If single result, return PDF directly
     if (results.length === 1) {

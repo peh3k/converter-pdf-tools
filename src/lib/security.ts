@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
-const WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000')
-const MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '20')
-const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE_MB || '50') * 1024 * 1024
+const WINDOW_MS = 60000
+const MAX_REQUESTS = 30
+const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
 
 export function rateLimit(request: NextRequest): NextResponse | null {
   const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'anonymous'

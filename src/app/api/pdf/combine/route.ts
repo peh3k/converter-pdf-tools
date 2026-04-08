@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/auth'
 import { rateLimit, validateFileSize, securityHeaders } from '@/lib/security'
 import { combinePDFs } from '@/lib/pdf-operations'
-import { prisma } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
   const rateLimitResponse = rateLimit(request)
   if (rateLimitResponse) return rateLimitResponse
 
   try {
-    const user = await getCurrentUser()
-
     const formData = await request.formData()
     const files = formData.getAll('files') as File[]
 
@@ -28,18 +24,6 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await combinePDFs(buffers)
-
-    if (user) {
-      await prisma.conversion.create({
-        data: {
-          userId: user.id,
-          type: 'combine',
-          inputFileName: files.map(f => f.name).join(', '),
-          outputFileName: 'combined.pdf',
-          fileSize: result.length,
-        }
-      })
-    }
 
     return new NextResponse(new Uint8Array(result), {
       headers: {
